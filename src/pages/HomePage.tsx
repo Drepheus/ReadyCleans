@@ -71,13 +71,13 @@ export const HomePage = () => {
                         muted
                         playsInline
                         onEnded={handleVideoEnded}
-                        className="absolute w-full h-full object-cover opacity-40 transition-opacity duration-1000"
+                        className="absolute w-full h-full object-cover opacity-70 transition-opacity duration-1000"
                     >
                         <source src={heroVideos[currentVideoIndex]} type="video/mp4" />
                     </video>
 
                     {/* Dark Overlay to ensure readability */}
-                    <div className="absolute inset-0 bg-[#09090b]/60"></div>
+                    <div className="absolute inset-0 bg-[#09090b]/40"></div>
 
                     {/* Gradient Accents */}
                     <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-green-600/20 rounded-full blur-[120px] mix-blend-screen"></div>
