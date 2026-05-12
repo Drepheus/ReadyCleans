@@ -13,12 +13,23 @@ const LocationStep = () => {
     const { state, updateState, nextStep } = useBooking();
     const [error, setError] = useState('');
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
         if (state.city && state.zip) {
             if (isValidZipCode(state.zip)) {
+                try {
+                    await fetch('/api/notify', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            text: `*New Booking Started*\n*Address:* ${state.address}, ${state.city} ${state.zip}`
+                        })
+                    });
+                } catch (err) {
+                    console.error("Failed to send notification", err);
+                }
                 nextStep();
             } else {
                 setError('Sorry, we are currently only serving the Phoenix Metro area.');
@@ -393,6 +404,21 @@ const ContactStep = () => {
         });
     };
 
+    const handleNext = async () => {
+        try {
+            await fetch('/api/notify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text: `*Booking Progress - Step 6 Completed*\n*Name:* ${state.contact.firstName} ${state.contact.lastName}\n*Email:* ${state.contact.email}\n*Phone:* ${state.contact.phone}\n*Date:* ${state.date?.toLocaleDateString()} at ${state.time}`
+                })
+            });
+        } catch (err) {
+            console.error("Failed to send notification", err);
+        }
+        nextStep();
+    };
+
     const isValid = state.contact.firstName && state.contact.lastName && state.contact.email && state.contact.phone;
 
     return (
@@ -437,7 +463,7 @@ const ContactStep = () => {
                 required
             />
 
-            <Button fullWidth variant="accent" disabled={!isValid} onClick={nextStep}>
+            <Button fullWidth variant="accent" disabled={!isValid} onClick={handleNext}>
                 Continue to Payment
             </Button>
         </div>

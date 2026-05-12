@@ -137,7 +137,7 @@ export const HomePage = () => {
                                 transition={{ delay: 0.3 }}
                                 className="flex items-center gap-4"
                             >
-                                <Button size="lg" variant="accent" onClick={() => document.getElementById('plans')?.scrollIntoView({ behavior: 'smooth' })}>
+                                <Button size="lg" variant="accent" onClick={() => navigate('/booking')}>
                                     Book Now
                                 </Button>
                                 <Button size="lg" variant="outline" onClick={() => navigate('/contact')}>
