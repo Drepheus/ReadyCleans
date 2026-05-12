@@ -42,34 +42,34 @@ export const INITIAL_BOOKING_STATE: BookingState = {
 
 export const PRICING = {
   'standard': {
-    'studio': 80,
-    '1bed1bath': 150,
-    '2bed1bath': 200,
-    '2bed2bath': 250,
-    '3bed2bath': 300,
-    '3bed3bath': 350,
-    '4bed2bath': 350,
-    '4bed3bath': 400,
-    '5bed2bath': 400,
-    '5bed3bath': 450
+    'studio': 69,
+    '1bed1bath': 89,
+    '2bed1bath': 109,
+    '2bed2bath': 129,
+    '3bed2bath': 149,
+    '3bed3bath': 169,
+    '4bed2bath': 189,
+    '4bed3bath': 209,
+    '5bed2bath': 229,
+    '5bed3bath': 249
   },
   'airbnb': {
-    'studio': 80,
-    '1bed1bath': 130,
-    '2bed1bath': 180,
-    '2bed2bath': 250,
-    '3bed2bath': 300,
-    '3bed3bath': 350,
-    '4bed2bath': 350,
-    '4bed3bath': 400,
-    '5bed2bath': 400,
-    '5bed3bath': 450
+    'studio': 69,
+    '1bed1bath': 89,
+    '2bed1bath': 109,
+    '2bed2bath': 129,
+    '3bed2bath': 149,
+    '3bed3bath': 169,
+    '4bed2bath': 189,
+    '4bed3bath': 209,
+    '5bed2bath': 229,
+    '5bed3bath': 249
   },
   'addons': {
-    'oven': 35,
-    'fridge': 35,
-    'windows': 35,
-    'same-day': 75
+    'oven': 15,
+    'fridge': 15,
+    'windows': 15,
+    'same-day': 35
   }
 };
 

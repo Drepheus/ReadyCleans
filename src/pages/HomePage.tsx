@@ -438,7 +438,7 @@ export const HomePage = () => {
                         <div className="hidden md:block absolute top-12 left-[16%] right-[16%] h-0.5 bg-gray-200 z-0"></div>
 
                         {[
-                            { step: "1", title: "Select Service", desc: "Choose Standard or Airbnb, plus your unit size ($80+)." },
+                            { step: "1", title: "Select Service", desc: "Choose Standard or Airbnb, plus your unit size ($69+)." },
                             { step: "2", title: "We Clean", desc: "Our team brings all supplies and equipment. Lockbox or keypad entry supported." },
                             { step: "3", title: "Fresh Start", desc: "Walk into a spotless home ready for you or your guests." }
                         ].map((step, i) => (
@@ -484,18 +484,18 @@ export const HomePage = () => {
                                     <h3 className="text-2xl font-bold mb-2 text-white">Standard Clean</h3>
                                     <div className="flex items-baseline justify-center gap-1">
                                         <span className="text-gray-400">from</span>
-                                        <span className="text-4xl font-bold text-white">$80</span>
+                                        <span className="text-4xl font-bold text-white">$69</span>
                                     </div>
                                     <p className="text-gray-500 mt-4 text-sm">For homeowners and residents.</p>
                                 </div>
                                 <div className="space-y-4 flex-1 max-w-sm mx-auto w-full">
                                     <div className="h-px bg-[#27272a] my-4"></div>
-                                    <div className="flex justify-between text-gray-300 text-sm"><span>Studio / 1 Bath</span> <span className="font-bold text-white">$80</span></div>
-                                    <div className="flex justify-between text-gray-300 text-sm"><span>1 Bed / 1 Bath</span> <span className="font-bold text-white">$150</span></div>
-                                    <div className="flex justify-between text-gray-300 text-sm"><span>2 Bed / 2 Bath</span> <span className="font-bold text-white">$250</span></div>
-                                    <div className="flex justify-between text-gray-300 text-sm"><span>3 Bed / 2 Bath</span> <span className="font-bold text-white">$300</span></div>
-                                    <div className="flex justify-between text-gray-300 text-sm"><span>4 Bed / 3 Bath</span> <span className="font-bold text-white">$400</span></div>
-                                    <div className="flex justify-between text-gray-300 text-sm"><span>5 Bed / 3 Bath</span> <span className="font-bold text-white">$450</span></div>
+                                    <div className="flex justify-between text-gray-300 text-sm"><span>Studio / 1 Bath</span> <span className="font-bold text-white">$69</span></div>
+                                    <div className="flex justify-between text-gray-300 text-sm"><span>1 Bed / 1 Bath</span> <span className="font-bold text-white">$89</span></div>
+                                    <div className="flex justify-between text-gray-300 text-sm"><span>2 Bed / 2 Bath</span> <span className="font-bold text-white">$129</span></div>
+                                    <div className="flex justify-between text-gray-300 text-sm"><span>3 Bed / 2 Bath</span> <span className="font-bold text-white">$149</span></div>
+                                    <div className="flex justify-between text-gray-300 text-sm"><span>4 Bed / 3 Bath</span> <span className="font-bold text-white">$209</span></div>
+                                    <div className="flex justify-between text-gray-300 text-sm"><span>5 Bed / 3 Bath</span> <span className="font-bold text-white">$249</span></div>
                                 </div>
                                 <div className="mt-8">
                                     <Button fullWidth variant="outline" onClick={() => handlePricingClick('standard')}>Book Standard</Button>
@@ -526,18 +526,18 @@ export const HomePage = () => {
                                     <h3 className="text-2xl font-bold mb-2 text-white">Airbnb Turnover</h3>
                                     <div className="flex items-baseline justify-center gap-1">
                                         <span className="text-gray-400">from</span>
-                                        <span className="text-4xl font-bold text-white">$80</span>
+                                        <span className="text-4xl font-bold text-white">$69</span>
                                     </div>
                                     <p className="text-gray-500 mt-4 text-sm">Recurring standard for short-term rentals.</p>
                                 </div>
                                 <div className="space-y-4 flex-1 max-w-sm mx-auto w-full">
                                     <div className="h-px bg-green-500/20 my-4"></div>
-                                    <div className="flex justify-between text-gray-300 text-sm"><span>Studio / 1 Bath</span> <span className="font-bold text-white">$80</span></div>
-                                    <div className="flex justify-between text-gray-300 text-sm"><span>1 Bed / 1 Bath</span> <span className="font-bold text-white">$130</span></div>
-                                    <div className="flex justify-between text-gray-300 text-sm"><span>2 Bed / 2 Bath</span> <span className="font-bold text-white">$250</span></div>
-                                    <div className="flex justify-between text-gray-300 text-sm"><span>3 Bed / 2 Bath</span> <span className="font-bold text-white">$300</span></div>
-                                    <div className="flex justify-between text-gray-300 text-sm"><span>4 Bed / 3 Bath</span> <span className="font-bold text-white">$400</span></div>
-                                    <div className="flex justify-between text-gray-300 text-sm"><span>5 Bed / 3 Bath</span> <span className="font-bold text-white">$450</span></div>
+                                    <div className="flex justify-between text-gray-300 text-sm"><span>Studio / 1 Bath</span> <span className="font-bold text-white">$69</span></div>
+                                    <div className="flex justify-between text-gray-300 text-sm"><span>1 Bed / 1 Bath</span> <span className="font-bold text-white">$89</span></div>
+                                    <div className="flex justify-between text-gray-300 text-sm"><span>2 Bed / 2 Bath</span> <span className="font-bold text-white">$129</span></div>
+                                    <div className="flex justify-between text-gray-300 text-sm"><span>3 Bed / 2 Bath</span> <span className="font-bold text-white">$149</span></div>
+                                    <div className="flex justify-between text-gray-300 text-sm"><span>4 Bed / 3 Bath</span> <span className="font-bold text-white">$209</span></div>
+                                    <div className="flex justify-between text-gray-300 text-sm"><span>5 Bed / 3 Bath</span> <span className="font-bold text-white">$249</span></div>
                                 </div>
                                 <div className="mt-8">
                                     <Button fullWidth variant="accent" onClick={() => handlePricingClick('airbnb')}>Book Turnover</Button>
