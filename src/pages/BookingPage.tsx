@@ -17,14 +17,14 @@ const LocationStep = () => {
         e.preventDefault();
         setError('');
 
-        if (state.city && state.zip) {
+        if (state.city && state.zip && state.contact.phone) {
             if (isValidZipCode(state.zip)) {
                 try {
                     await fetch('/api/notify', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            text: `*New Booking Started*\n*Address:* ${state.address}, ${state.city} ${state.zip}`
+                            text: `*New Booking Started*\n*Address:* ${state.address}, ${state.city} ${state.zip}\n*Phone:* ${state.contact.phone}`
                         })
                     });
                 } catch (err) {
@@ -76,13 +76,22 @@ const LocationStep = () => {
                     />
                 </div>
 
+                <Input
+                    label="Phone Number"
+                    type="tel"
+                    value={state.contact.phone}
+                    onChange={(e) => updateState({ contact: { ...state.contact, phone: e.target.value } })}
+                    placeholder="(555) 555-5555"
+                    required
+                />
+
                 {error && (
                     <p className="text-sm text-red-500 font-medium animate-pulse">
                         {error}
                     </p>
                 )}
 
-                <Button type="submit" fullWidth variant="accent" disabled={!state.zip || !state.city || !state.address}>
+                <Button type="submit" fullWidth variant="accent" disabled={!state.zip || !state.city || !state.address || !state.contact.phone}>
                     Continue
                 </Button>
             </form>
@@ -166,6 +175,21 @@ const SizeStep = () => {
         { id: '5bed3bath', label: '5 Bed / 3 Bath' },
     ];
 
+    const handleNext = async () => {
+        try {
+            await fetch('/api/notify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text: `*Unit Size Selected*\n*Size:* ${state.unitSize.replace(/(\d)bed(\d)bath/, '$1 Bd / $2 Ba').replace('studio', 'Studio')}\n*Phone:* ${state.contact.phone}`
+                })
+            });
+        } catch (err) {
+            console.error("Failed to send notification", err);
+        }
+        nextStep();
+    };
+
     return (
         <div className="space-y-8">
             <div className="text-center">
@@ -198,7 +222,7 @@ const SizeStep = () => {
                 ))}
             </div>
 
-            <Button fullWidth variant="accent" onClick={nextStep}>Continue</Button>
+            <Button fullWidth variant="accent" onClick={handleNext}>Continue</Button>
         </div>
     );
 };
@@ -479,6 +503,25 @@ const CheckoutStep = () => {
     const basePrice = PRICING[state.serviceType]?.[state.unitSize] || 0;
     const addOnsPrice = state.addOns.reduce((acc, curr) => acc + (PRICING.addons[curr] || 0), 0);
     const total = basePrice + addOnsPrice;
+    const DEPOSIT_AMOUNT = 50;
+    const remaining = total - DEPOSIT_AMOUNT;
+
+    useEffect(() => {
+        const notifyPaywall = async () => {
+            try {
+                await fetch('/api/notify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: `*Customer Reached Paywall*\n*Phone:* ${state.contact.phone}\n*Total Value:* $${total}.00\n*Deposit Due:* $${DEPOSIT_AMOUNT}.00`
+                    })
+                });
+            } catch (err) {
+                console.error("Failed to send paywall notification", err);
+            }
+        };
+        notifyPaywall();
+    }, []); // Run once when component mounts
 
     // Configuration
     const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/dRm6oH2XPaJN82N0HSdfG0h';
@@ -527,10 +570,6 @@ const CheckoutStep = () => {
 
         window.location.href = `${STRIPE_PAYMENT_LINK}?${params.toString()}`;
     };
-
-    const DEPOSIT_AMOUNT = 50;
-    const remaining = total - DEPOSIT_AMOUNT;
-
 
     return (
         <div className="space-y-6">
