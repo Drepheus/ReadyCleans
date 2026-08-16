@@ -56,7 +56,7 @@ export const HomePage = () => {
     return (
         <div className="flex flex-col">
             <Helmet>
-                <title>ReadyCleans | Phoenix's #1 Standard & Airbnb Cleaning</title>
+                <title>ReadyCleans | Phoenix Standard & Airbnb Cleaning</title>
                 <meta name="description" content="Professional standard residential cleaning and Airbnb turnover services in Phoenix, AZ. Flat-rate pricing, easy online booking, and 100% satisfaction guarantee." />
                 <link rel="canonical" href="https://readycleans.space/" />
             </Helmet>
@@ -101,7 +101,7 @@ export const HomePage = () => {
                                     <Star size={16} fill="currentColor" />
                                     <Star size={16} fill="currentColor" />
                                 </div>
-                                <span className="text-sm font-medium text-gray-400">#1 Rated in Phoenix, AZ</span>
+                                <span className="text-sm font-medium text-gray-400">House cleaning in Phoenix, AZ</span>
                                 <div className="h-4 w-px bg-[#333]"></div>
                                 <span className="text-sm font-bold text-emerald-500 flex items-center gap-2">
                                     <span className="relative flex h-2 w-2">
@@ -564,13 +564,13 @@ export const HomePage = () => {
                         transition={{ duration: 0.6 }}
                         className="mb-16"
                     >
-                        <h3 className="text-3xl md:text-5xl font-bold text-white mb-4">Arizona's Top Rated Cleaners</h3>
-                        <p className="text-emerald-500 font-bold uppercase tracking-[0.2em] text-sm">Award Winning Service</p>
+                        <h3 className="text-3xl md:text-5xl font-bold text-white mb-4">Phoenix Metro House Cleaning</h3>
+                        <p className="text-emerald-500 font-bold uppercase tracking-[0.2em] text-sm">Standard & Airbnb Turnover</p>
                     </motion.div>
 
                     <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto mb-20">
                         {[
-                            { label: "5-Star Reviews", value: "500+", desc: "Across Google & Yelp" },
+                            { label: "Starting at", value: "$69", desc: "Flat-rate by bedroom count" },
                             { label: "Satisfaction", value: "100%", desc: "Or we re-clean for free" },
                             { label: "Vetted Crews", value: "100%", desc: "Background checked" }
                         ].map((stat, i) => (
