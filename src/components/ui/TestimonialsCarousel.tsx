@@ -80,7 +80,7 @@ export const TestimonialsCarousel = () => {
             <div className="container mx-auto px-4 relative z-10">
                 <div className="text-center mb-16">
                     <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">Trusted by Phoenix</h2>
-                    <p className="text-gray-400">Join 5,000+ happy neighbors and businesses.</p>
+                    <p className="text-gray-400">What Phoenix homeowners and hosts say.</p>
                 </div>
 
                 <div className="max-w-5xl mx-auto">
