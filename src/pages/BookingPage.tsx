@@ -4,7 +4,7 @@ import { useBooking } from '../context/BookingContext';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
-import { ArrowLeft, Check, Loader2, X, Sparkles, Home } from 'lucide-react';
+import { ArrowLeft, Check, Loader2, X, Sparkles, Home, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { type ServiceType, type UnitSize, type AddOnType, PRICING } from '../types';
 import { isValidZipCode } from '../utils/validation';
 
@@ -309,36 +309,152 @@ const AddOnStep = () => {
 };
 
 const ScheduleStep = () => {
-    const { updateState, nextStep } = useBooking();
+    const { state, updateState, nextStep } = useBooking();
 
-    // Generate relative dates
-    const dates = useMemo(() => {
-        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const datesArr = [];
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        for (let i = 0; i <= 6; i++) {
-            const d = new Date(today);
-            d.setDate(today.getDate() + i);
-            datesArr.push({
-                label: i === 0 ? 'Today' : (i === 1 ? 'Tomorrow' : days[d.getDay()]),
-                date: `${months[d.getMonth()]} ${d.getDate()}`,
-                full: d.toISOString(),
-                blocked: false // Removed random block
-            });
-        }
-        return datesArr;
+    const today = useMemo(() => {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        return d;
     }, []);
 
+    // Expand bookable dates to 4 months in advance
+    const maxDate = useMemo(() => {
+        const d = new Date(today.getFullYear(), today.getMonth() + 5, 0);
+        d.setHours(23, 59, 59, 999);
+        return d;
+    }, [today]);
+
+    // Initial selected date (from state if already chosen and valid, otherwise today)
+    const [selectedDate, setSelectedDate] = useState<Date>(() => {
+        if (state.date) {
+            const saved = new Date(state.date);
+            if (!isNaN(saved.getTime()) && saved >= today && saved <= maxDate) {
+                return saved;
+            }
+        }
+        return new Date(today);
+    });
+
+    // Month currently being viewed in the calendar
+    const [viewDate, setViewDate] = useState<Date>(() => {
+        return new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+    });
+
     const times = ['8:00 AM - 11:00 AM', '11:00 AM - 2:00 PM', '2:00 PM - 5:00 PM'];
-    const [selectedDate, setSelectedDate] = useState<string>(dates[0].full);
-    const [selectedTime, setSelectedTime] = useState(times[0]);
+    const [selectedTime, setSelectedTime] = useState<string>(state.time || times[0]);
+
+    // Quick selection options for convenience
+    const quickOptions = useMemo(() => {
+        const tomorrow = new Date(today);
+        tomorrow.setDate(today.getDate() + 1);
+
+        const inOneWeek = new Date(today);
+        inOneWeek.setDate(today.getDate() + 7);
+
+        return [
+            { label: 'Today', date: today },
+            { label: 'Tomorrow', date: tomorrow },
+            { label: 'In 1 Week', date: inOneWeek },
+        ];
+    }, [today]);
+
+    const isSameDay = (d1: Date, d2: Date) => {
+        return (
+            d1.getFullYear() === d2.getFullYear() &&
+            d1.getMonth() === d2.getMonth() &&
+            d1.getDate() === d2.getDate()
+        );
+    };
+
+    const minMonthDate = useMemo(() => new Date(today.getFullYear(), today.getMonth(), 1), [today]);
+    const maxMonthDate = useMemo(() => new Date(today.getFullYear(), today.getMonth() + 4, 1), [today]);
+
+    const canGoPrev = viewDate.getTime() > minMonthDate.getTime();
+    const canGoNext = viewDate.getTime() < maxMonthDate.getTime();
+
+    const handlePrevMonth = () => {
+        if (canGoPrev) {
+            setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1));
+        }
+    };
+
+    const handleNextMonth = () => {
+        if (canGoNext) {
+            setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1));
+        }
+    };
+
+    const monthNames = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+
+    const monthTitle = `${monthNames[viewDate.getMonth()]} ${viewDate.getFullYear()}`;
+
+    const calendarDays = useMemo(() => {
+        const year = viewDate.getFullYear();
+        const month = viewDate.getMonth();
+
+        const firstDayIndex = new Date(year, month, 1).getDay();
+        const totalDays = new Date(year, month + 1, 0).getDate();
+
+        const daysList: {
+            dayNum: number | null;
+            date: Date | null;
+            isSelectable: boolean;
+            isToday: boolean;
+            key: string;
+        }[] = [];
+
+        // Empty padding slots
+        for (let i = 0; i < firstDayIndex; i++) {
+            daysList.push({
+                dayNum: null,
+                date: null,
+                isSelectable: false,
+                isToday: false,
+                key: `pad-${i}`
+            });
+        }
+
+        // Real days of month
+        for (let d = 1; d <= totalDays; d++) {
+            const current = new Date(year, month, d);
+            current.setHours(0, 0, 0, 0);
+
+            const isToday = isSameDay(current, today);
+            const isPast = current.getTime() < today.getTime();
+            const isBeyondMax = current.getTime() > maxDate.getTime();
+            const isSelectable = !isPast && !isBeyondMax;
+
+            daysList.push({
+                dayNum: d,
+                date: current,
+                isSelectable,
+                isToday,
+                key: `day-${year}-${month}-${d}`
+            });
+        }
+
+        return daysList;
+    }, [viewDate, today, maxDate]);
+
+    const handleSelectDate = (d: Date) => {
+        setSelectedDate(d);
+        if (d.getMonth() !== viewDate.getMonth() || d.getFullYear() !== viewDate.getFullYear()) {
+            setViewDate(new Date(d.getFullYear(), d.getMonth(), 1));
+        }
+    };
 
     const handleNext = () => {
+        const appointmentDate = new Date(
+            selectedDate.getFullYear(),
+            selectedDate.getMonth(),
+            selectedDate.getDate(),
+            12, 0, 0
+        );
         updateState({
-            date: new Date(selectedDate),
+            date: appointmentDate,
             time: selectedTime
         });
         nextStep();
@@ -352,36 +468,136 @@ const ScheduleStep = () => {
 
             <div className="space-y-6">
                 <div>
-                    <h3 className="text-sm font-semibold text-gray-400 uppercase mb-3">Available Days</h3>
-                    <div className="grid grid-cols-3 gap-2">
-                        {dates.slice(0, 6).map((d: any) => (
-                            <button
-                                key={d.full}
-                                disabled={d.blocked}
-                                onClick={() => !d.blocked && setSelectedDate(d.full)}
-                                className={`p-3 border rounded-xl text-sm font-medium transition-all duration-300 flex flex-col items-center justify-center gap-1 relative overflow-hidden group ${selectedDate === d.full
-                                    ? 'border-transparent text-white'
-                                    : d.blocked
-                                        ? 'border-[#222] bg-[#121212] text-gray-700 cursor-not-allowed opacity-40'
-                                        : 'border-[#27272a] bg-[#18181b] text-gray-400 hover:border-[#3f3f46] hover:bg-[#202023]'
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-semibold text-gray-400 uppercase">Available Dates</h3>
+                        <span className="text-xs text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 font-medium">
+                            Booking open 3+ months out
+                        </span>
+                    </div>
+
+                    {/* Quick Selection Shortcuts */}
+                    <div className="grid grid-cols-3 gap-2 mb-4">
+                        {quickOptions.map((opt) => {
+                            const active = isSameDay(opt.date, selectedDate);
+                            return (
+                                <button
+                                    key={opt.label}
+                                    type="button"
+                                    onClick={() => handleSelectDate(opt.date)}
+                                    className={`py-2 px-3 border rounded-xl text-xs font-medium transition-all duration-200 flex flex-col items-center justify-center gap-0.5 ${
+                                        active
+                                            ? 'border-emerald-500 bg-emerald-600 text-white font-bold shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+                                            : 'border-[#27272a] bg-[#18181b] text-gray-400 hover:border-[#3f3f46] hover:bg-[#202023] hover:text-white'
                                     }`}
-                            >
-                                {selectedDate === d.full && (
-                                    <>
-                                        <div className="absolute inset-0 rounded-xl border-2 border-emerald-500 z-0" />
-                                        <div className="absolute inset-[1px] bg-emerald-600 rounded-[11px] -z-10" />
-                                    </>
-                                )}
-                                {selectedDate === d.full && (
-                                    <div className="absolute top-1 right-1 bg-white text-green-600 rounded-full p-0.5 z-20">
-                                        <Check size={8} strokeWidth={4} />
-                                    </div>
-                                )}
-                                <span className={`${selectedDate === d.full ? 'font-bold text-white' : ''} relative z-10`}>{d.label}</span>
-                                <span className={`text-xs ${selectedDate === d.full ? 'text-white/90' : 'opacity-60'} relative z-10`}>{d.date}</span>
-                                {d.blocked && <span className="text-[10px] text-red-900 font-bold uppercase mt-1 relative z-10">Booked</span>}
-                            </button>
-                        ))}
+                                >
+                                    <span>{opt.label}</span>
+                                    <span className={`text-[10px] ${active ? 'text-white/90' : 'opacity-60'}`}>
+                                        {opt.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Interactive Calendar Container */}
+                    <div className="p-4 rounded-xl border border-[#27272a] bg-[#141416]">
+                        {/* Month Navigation Header */}
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <Calendar size={18} className="text-emerald-500" />
+                                <span className="font-bold text-white text-base">
+                                    {monthTitle}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <button
+                                    type="button"
+                                    disabled={!canGoPrev}
+                                    onClick={handlePrevMonth}
+                                    className={`p-2 rounded-lg border border-[#27272a] transition-all ${
+                                        canGoPrev
+                                            ? 'text-gray-300 hover:text-white hover:bg-[#202023] hover:border-[#3f3f46]'
+                                            : 'text-gray-600 opacity-25 cursor-not-allowed border-transparent'
+                                    }`}
+                                    aria-label="Previous Month"
+                                >
+                                    <ChevronLeft size={16} />
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={!canGoNext}
+                                    onClick={handleNextMonth}
+                                    className={`p-2 rounded-lg border border-[#27272a] transition-all ${
+                                        canGoNext
+                                            ? 'text-gray-300 hover:text-white hover:bg-[#202023] hover:border-[#3f3f46]'
+                                            : 'text-gray-600 opacity-25 cursor-not-allowed border-transparent'
+                                    }`}
+                                    aria-label="Next Month"
+                                >
+                                    <ChevronRight size={16} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Weekday Labels */}
+                        <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((dw) => (
+                                <div key={dw} className="text-xs font-semibold text-gray-500 py-1">
+                                    {dw}
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Day Cells Grid */}
+                        <div className="grid grid-cols-7 gap-1 text-center">
+                            {calendarDays.map((cell) => {
+                                if (!cell.date) {
+                                    return <div key={cell.key} className="h-10 w-full" />;
+                                }
+
+                                const selected = isSameDay(cell.date, selectedDate);
+
+                                return (
+                                    <button
+                                        key={cell.key}
+                                        type="button"
+                                        disabled={!cell.isSelectable}
+                                        onClick={() => cell.date && handleSelectDate(cell.date)}
+                                        className={`h-10 w-full rounded-lg text-sm font-medium transition-all duration-150 relative flex flex-col items-center justify-center ${
+                                            selected
+                                                ? 'bg-emerald-600 text-white font-bold shadow-[0_0_15px_rgba(16,185,129,0.35)] ring-2 ring-emerald-400'
+                                                : cell.isSelectable
+                                                ? 'border border-[#27272a] bg-[#18181b] text-gray-300 hover:border-emerald-500/50 hover:bg-[#202023] hover:text-white'
+                                                : 'text-gray-600 bg-transparent cursor-not-allowed opacity-25'
+                                        }`}
+                                    >
+                                        <span>{cell.dayNum}</span>
+                                        {cell.isToday && !selected && (
+                                            <span className="w-1 h-1 rounded-full bg-emerald-400 absolute bottom-1" />
+                                        )}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Selected Date Confirmation Banner */}
+                    <div className="mt-3 flex items-center justify-between p-3 rounded-xl bg-[#18181b] border border-[#27272a]">
+                        <div className="flex items-center gap-2">
+                            <Check size={16} className="text-emerald-500" />
+                            <span className="text-xs text-gray-400">Chosen Date:</span>
+                            <span className="text-sm font-semibold text-white">
+                                {selectedDate.toLocaleDateString('en-US', {
+                                    weekday: 'short',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                })}
+                            </span>
+                        </div>
+                        <span className="text-xs text-gray-400">
+                            {selectedTime}
+                        </span>
                     </div>
                 </div>
 
@@ -391,11 +607,13 @@ const ScheduleStep = () => {
                         {times.map((t) => (
                             <button
                                 key={t}
+                                type="button"
                                 onClick={() => setSelectedTime(t)}
-                                className={`p-4 border rounded-xl text-left flex justify-between items-center group transition-all duration-300 relative overflow-hidden ${selectedTime === t
-                                    ? 'border-transparent text-white'
-                                    : 'border-[#27272a] bg-[#18181b] text-gray-400 hover:bg-[#202023] hover:border-[#3f3f46]'
-                                    }`}
+                                className={`p-4 border rounded-xl text-left flex justify-between items-center group transition-all duration-300 relative overflow-hidden ${
+                                    selectedTime === t
+                                        ? 'border-transparent text-white'
+                                        : 'border-[#27272a] bg-[#18181b] text-gray-400 hover:bg-[#202023] hover:border-[#3f3f46]'
+                                }`}
                             >
                                 {selectedTime === t && (
                                     <>
@@ -592,6 +810,14 @@ const CheckoutStep = () => {
                     <span className="text-gray-400">Unit Size</span>
                     <span className="font-semibold text-white capitalize">{state.unitSize.replace(/(\d)bed(\d)bath/, '$1 Bd / $2 Ba').replace('studio', 'Studio')}</span>
                 </div>
+                {state.date && (
+                    <div className="flex justify-between">
+                        <span className="text-gray-400">Appointment</span>
+                        <span className="font-semibold text-white">
+                            {state.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} ({state.time})
+                        </span>
+                    </div>
+                )}
                 {state.addOns.length > 0 && (
                     <div className="flex justify-between flex-wrap gap-2 text-right">
                         <span className="text-gray-400">Add-ons</span>
