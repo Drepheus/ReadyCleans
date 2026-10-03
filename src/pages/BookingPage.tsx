@@ -4,7 +4,7 @@ import { useBooking } from '../context/BookingContext';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
-import { ArrowLeft, Check, Loader2, X, Sparkles, Home, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { ArrowLeft, Check, Loader2, X, Sparkles, Home, ChevronLeft, ChevronRight, Calendar, Clock } from 'lucide-react';
 import { type ServiceType, type UnitSize, type AddOnType, PRICING } from '../types';
 import { isValidZipCode } from '../utils/validation';
 
@@ -340,8 +340,64 @@ const ScheduleStep = () => {
         return new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
     });
 
-    const times = ['8:00 AM - 11:00 AM', '11:00 AM - 2:00 PM', '2:00 PM - 5:00 PM'];
-    const [selectedTime, setSelectedTime] = useState<string>(state.time || times[0]);
+    const timeWindows = useMemo(() => [
+        { 
+            id: 'morning', 
+            label: '8:00 AM - 11:00 AM', 
+            name: 'Morning Window', 
+            specificSlots: ['8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM'] 
+        },
+        { 
+            id: 'midday', 
+            label: '11:00 AM - 2:00 PM', 
+            name: 'Midday Window', 
+            specificSlots: ['11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM'] 
+        },
+        { 
+            id: 'afternoon', 
+            label: '2:00 PM - 5:00 PM', 
+            name: 'Afternoon Window', 
+            specificSlots: ['2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM'] 
+        },
+    ], []);
+
+    const initialIsSpecific = useMemo(() => {
+        if (!state.time) return false;
+        return !timeWindows.some(w => w.label === state.time);
+    }, [state.time, timeWindows]);
+
+    const [selectedWindow, setSelectedWindow] = useState<string>(() => {
+        if (state.time) {
+            const matched = timeWindows.find(w => 
+                w.label === state.time || 
+                w.specificSlots.some(s => state.time.includes(s))
+            );
+            if (matched) return matched.label;
+        }
+        return timeWindows[0].label;
+    });
+
+    const [isSpecificTime, setIsSpecificTime] = useState<boolean>(initialIsSpecific);
+    const [specificTime, setSpecificTime] = useState<string>(() => {
+        if (state.time && initialIsSpecific) {
+            return state.time.replace(' (Exact Time)', '');
+        }
+        return '9:00 AM';
+    });
+
+    const handleSelectWindow = (windowLabel: string) => {
+        setSelectedWindow(windowLabel);
+        const win = timeWindows.find(w => w.label === windowLabel);
+        if (win && win.specificSlots.length > 2) {
+            setSpecificTime(win.specificSlots[2]);
+        }
+    };
+
+    const currentWindow = timeWindows.find(w => w.label === selectedWindow) || timeWindows[0];
+
+    const effectiveTime = isSpecificTime 
+        ? `${specificTime} (Exact Time)` 
+        : selectedWindow;
 
     // Quick selection options for convenience
     const quickOptions = useMemo(() => {
@@ -455,7 +511,7 @@ const ScheduleStep = () => {
         );
         updateState({
             date: appointmentDate,
-            time: selectedTime
+            time: effectiveTime
         });
         nextStep();
     };
@@ -595,36 +651,119 @@ const ScheduleStep = () => {
                                 })}
                             </span>
                         </div>
-                        <span className="text-xs text-gray-400">
-                            {selectedTime}
+                        <span className="text-xs text-emerald-400 font-medium bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                            {effectiveTime}
                         </span>
                     </div>
                 </div>
 
                 <div>
-                    <h3 className="text-sm font-semibold text-gray-400 uppercase mb-3">Time Window</h3>
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-semibold text-gray-400 uppercase">1. Arrival Window</h3>
+                        <span className="text-[11px] text-gray-500">Standard 3-hour arrival window</span>
+                    </div>
+
                     <div className="flex flex-col gap-2">
-                        {times.map((t) => (
+                        {timeWindows.map((tw) => {
+                            const isSelected = selectedWindow === tw.label;
+                            return (
+                                <button
+                                    key={tw.id}
+                                    type="button"
+                                    onClick={() => handleSelectWindow(tw.label)}
+                                    className={`p-4 border rounded-xl text-left flex justify-between items-center group transition-all duration-300 relative overflow-hidden ${
+                                        isSelected
+                                            ? 'border-transparent text-white'
+                                            : 'border-[#27272a] bg-[#18181b] text-gray-400 hover:bg-[#202023] hover:border-[#3f3f46]'
+                                    }`}
+                                >
+                                    {isSelected && (
+                                        <>
+                                            <div className="absolute inset-0 rounded-xl border-2 border-emerald-500 z-0" />
+                                            <div className="absolute inset-[1px] bg-emerald-600 rounded-[11px] -z-10" />
+                                        </>
+                                    )}
+                                    <div className="flex flex-col relative z-10">
+                                        <span className="font-semibold text-white">{tw.label}</span>
+                                        <span className={`text-xs ${isSelected ? 'text-white/85' : 'text-gray-500'}`}>{tw.name}</span>
+                                    </div>
+                                    <div className={`w-4 h-4 rounded-full border relative z-10 ${isSelected ? 'border-white bg-white' : 'border-gray-500'}`}>
+                                        {isSelected && <div className="w-2 h-2 rounded-full bg-emerald-600 m-auto mt-0.5" />}
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Specific Time Customization Card */}
+                    <div className="mt-4 p-4 rounded-xl bg-[#141416] border border-[#27272a] space-y-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Clock size={16} className="text-emerald-500" />
+                                <span className="text-xs font-semibold text-white uppercase tracking-wider">
+                                    Need a Specific Time?
+                                </span>
+                            </div>
                             <button
-                                key={t}
                                 type="button"
-                                onClick={() => setSelectedTime(t)}
-                                className={`p-4 border rounded-xl text-left flex justify-between items-center group transition-all duration-300 relative overflow-hidden ${
-                                    selectedTime === t
-                                        ? 'border-transparent text-white'
-                                        : 'border-[#27272a] bg-[#18181b] text-gray-400 hover:bg-[#202023] hover:border-[#3f3f46]'
+                                onClick={() => setIsSpecificTime(!isSpecificTime)}
+                                className={`text-xs px-3 py-1 rounded-full border transition-all font-medium ${
+                                    isSpecificTime
+                                        ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.2)]'
+                                        : 'bg-[#1e1e24] border-[#3f3f46] text-gray-300 hover:text-white hover:border-emerald-500/40'
                                 }`}
                             >
-                                {selectedTime === t && (
-                                    <>
-                                        <div className="absolute inset-0 rounded-xl border-2 border-emerald-500 z-0" />
-                                        <div className="absolute inset-[1px] bg-emerald-600 rounded-[11px] -z-10" />
-                                    </>
-                                )}
-                                <span className="relative z-10">{t}</span>
-                                <div className={`w-4 h-4 rounded-full border relative z-10 ${selectedTime === t ? 'border-green-500 bg-green-500' : 'border-gray-500'}`}></div>
+                                {isSpecificTime ? '✓ Specific Time Active' : '+ Set Exact Time'}
                             </button>
-                        ))}
+                        </div>
+
+                        <p className="text-xs text-gray-400 leading-relaxed">
+                            Cleaners normally arrive anytime within your selected window. If you require a <strong>specific exact start time</strong>, click above to choose your preferred time.
+                        </p>
+
+                        {isSpecificTime && (
+                            <div className="pt-3 border-t border-[#27272a] space-y-3">
+                                <div>
+                                    <span className="text-xs text-emerald-400 font-medium block mb-2">
+                                        Popular times for your {currentWindow.name}:
+                                    </span>
+                                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                                        {currentWindow.specificSlots.map((slot) => (
+                                            <button
+                                                key={slot}
+                                                type="button"
+                                                onClick={() => setSpecificTime(slot)}
+                                                className={`py-2 px-1 text-xs rounded-lg border font-medium transition-all ${
+                                                    specificTime === slot
+                                                        ? 'bg-emerald-600 border-emerald-500 text-white font-bold shadow-[0_0_10px_rgba(16,185,129,0.3)]'
+                                                        : 'bg-[#18181b] border-[#27272a] text-gray-300 hover:border-[#3f3f46] hover:bg-[#202023]'
+                                                }`}
+                                            >
+                                                {slot}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-between text-xs text-gray-400 pt-1">
+                                    <span>Or pick any exact time:</span>
+                                    <select
+                                        value={specificTime}
+                                        onChange={(e) => setSpecificTime(e.target.value)}
+                                        className="bg-[#18181b] border border-[#3f3f46] text-white rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:border-emerald-500"
+                                    >
+                                        {[
+                                            '7:00 AM', '7:30 AM', '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM', 
+                                            '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM', '12:00 PM', '12:30 PM',
+                                            '1:00 PM', '1:30 PM', '2:00 PM', '2:30 PM', '3:00 PM', '3:30 PM',
+                                            '4:00 PM', '4:30 PM', '5:00 PM', '5:30 PM', '6:00 PM'
+                                        ].map(t => (
+                                            <option key={t} value={t}>{t}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

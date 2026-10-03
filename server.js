@@ -198,7 +198,7 @@ app.post('/api/admin/generate', async (req, res) => {
 });
 
 // Slack & Chat Logic
-async function sendToSlack(customerMessage, aiResponse, conversationLength) {
+async function sendToSlack(text) {
     const webhookUrl = process.env.SLACK_WEBHOOK_URL;
     if (!webhookUrl) return;
 
@@ -206,48 +206,74 @@ async function sendToSlack(customerMessage, aiResponse, conversationLength) {
         await fetch(webhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                text: `*Msg #${conversationLength}*\n*User:* ${customerMessage}\n*AI:* ${aiResponse.substring(0, 200)}...`
-            })
+            body: JSON.stringify({ text })
         });
     } catch (e) { console.error("Slack Error", e); }
 }
 
-const SYSTEM_PROMPT = `You are a helpful AI assistant for ReadyCleans, a professional cleaning service specializing in Move-Out cleans and Airbnb turnover cleaning.
-- Move-Out Cleans: Start at $125 for Studio
-- Airbnb Upgrades: Start at $80 for Studio
-- We cover all standard inspection points: Kitchen, Bathrooms, Floors, Baseboards.
+const SYSTEM_PROMPT = `You are a helpful AI assistant for ReadyCleans, a professional cleaning service specializing in Standard residential cleans and Airbnb turnover cleaning in Phoenix, AZ.
+- Standard Cleans: Start at $69 for Studio, up to $249 for 5 Bed / 3 Bath
+- Airbnb Turnovers: Start at $69 for Studio, up to $249 for 5 Bed / 3 Bath
+- Add-ons: Oven ($15), Fridge ($15), Windows ($15), Same-Day ($35)
+- We cover all standard points: Kitchen, Bathrooms, Floors, Baseboards.
 - 100% Satisfaction Guarantee.
+- Direct users to book online at readycleans.space/booking or call/text (602) 671-2856.
 - Be friendly, professional, and concise.`;
 
 app.post('/api/chat', async (req, res) => {
     try {
         const { message, history = [] } = req.body;
+        if (!message || typeof message !== 'string') {
+            return res.status(400).json({ error: 'Message is required' });
+        }
 
-        // Chat logic
-        const chatHistory = [
-            { role: 'user', parts: [{ text: SYSTEM_PROMPT }] },
-            { role: 'model', parts: [{ text: 'Understood.' }] },
-            ...history.map((msg) => ({
-                role: msg.sender === 'user' ? 'user' : 'model',
-                parts: [{ text: msg.text }],
-            })),
-        ];
+        const trimmed = message.trim();
+        const timeString = new Date().toLocaleTimeString('en-US', { timeZone: 'America/Phoenix', hour: 'numeric', minute: '2-digit', hour12: true });
 
-        const chat = model.startChat({
-            history: chatHistory,
-            generationConfig: { maxOutputTokens: 500 },
-        });
+        // Immediately notify Slack
+        await sendToSlack(`💬 *Live Customer Chat Message*\n*Customer:* "${trimmed}"\n*Time:* ${timeString} MST`);
 
-        const result = await chat.sendMessage(message);
-        const text = result.response.text();
+        let responseText = '';
 
-        sendToSlack(message, text, history.length + 1);
-        res.json({ response: text });
+        if (model) {
+            try {
+                const cleanHistory = [];
+                for (const msg of history) {
+                    if (!msg || !msg.text) continue;
+                    const role = msg.sender === 'user' ? 'user' : 'model';
+                    if (cleanHistory.length === 0 || cleanHistory[cleanHistory.length - 1].role !== role) {
+                        cleanHistory.push({ role, parts: [{ text: msg.text }] });
+                    }
+                }
+                if (cleanHistory.length > 0 && cleanHistory[cleanHistory.length - 1].role === 'user') {
+                    cleanHistory.pop();
+                }
+
+                const chat = model.startChat({
+                    history: cleanHistory,
+                    generationConfig: { maxOutputTokens: 500 },
+                });
+
+                const result = await chat.sendMessage(trimmed);
+                responseText = result.response.text();
+            } catch (err) {
+                console.error('Gemini Error:', err);
+            }
+        }
+
+        if (!responseText) {
+            responseText = "Thanks for messaging us! Our team has received your inquiry directly in our Slack queue and will assist you shortly. If you'd like to book an appointment right now, you can reserve your spot online at [readycleans.space/booking](/booking) or call/text us directly at (602) 671-2856.";
+        } else {
+            await sendToSlack(`🤖 *AI Response:* ${responseText.substring(0, 300)}`);
+        }
+
+        res.json({ response: responseText });
 
     } catch (error) {
-        console.error('Gemini Error:', error);
-        res.status(500).json({ error: 'Failed to get AI response' });
+        console.error('Chat endpoint error:', error);
+        res.json({
+            response: "Thanks for reaching out! We've received your message and sent it directly to our team. For instant pricing and scheduling, you can book online at [readycleans.space/booking](/booking) or call/text us at (602) 671-2856."
+        });
     }
 });
 
