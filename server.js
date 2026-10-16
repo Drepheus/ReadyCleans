@@ -198,23 +198,46 @@ app.post('/api/admin/generate', async (req, res) => {
 });
 
 // Slack & Chat Logic
-async function sendToSlack(text) {
-    const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+async function sendToSlack(text, channel) {
+    const isBooked = channel === 'booked' || channel === '#booked';
+    const targetChannel = channel ? (channel.startsWith('#') ? channel : `#${channel}`) : undefined;
+
+    const webhookUrl = isBooked
+        ? (process.env.SLACK_BOOKED_WEBHOOK_URL || process.env.SLACK_WEBHOOK_URL_BOOKED || process.env.SLACK_WEBHOOK_URL)
+        : process.env.SLACK_WEBHOOK_URL;
+
     if (!webhookUrl) return;
 
     try {
+        const payload = {
+            text,
+            ...(targetChannel ? { channel: targetChannel } : {})
+        };
         await fetch(webhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text })
+            body: JSON.stringify(payload)
         });
     } catch (e) { console.error("Slack Error", e); }
 }
 
+app.post('/api/notify', async (req, res) => {
+    try {
+        const { text, channel } = req.body;
+        if (!text) return res.status(400).json({ error: 'Text is required' });
+
+        await sendToSlack(text, channel);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Notify Error:', err);
+        res.status(500).json({ error: 'Failed to notify' });
+    }
+});
+
 const SYSTEM_PROMPT = `You are a helpful AI assistant for ReadyCleans, a professional cleaning service specializing in Standard residential cleans and Airbnb turnover cleaning in Phoenix, AZ.
-- Standard Cleans: Start at $69 for Studio, up to $249 for 5 Bed / 3 Bath
-- Airbnb Turnovers: Start at $69 for Studio, up to $249 for 5 Bed / 3 Bath
-- Add-ons: Oven ($15), Fridge ($15), Windows ($15), Same-Day ($35)
+- Standard Cleans: Start at $77 for Studio, up to $279 for 5 Bed / 3 Bath
+- Airbnb Turnovers: Start at $77 for Studio, up to $279 for 5 Bed / 3 Bath
+- Add-ons: Oven ($17), Fridge ($17), Windows ($17), Same-Day ($39)
 - We cover all standard points: Kitchen, Bathrooms, Floors, Baseboards.
 - 100% Satisfaction Guarantee.
 - Direct users to book online at readycleans.space/booking or call/text (602) 671-2856.

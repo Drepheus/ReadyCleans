@@ -1,9 +1,9 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const SYSTEM_PROMPT = `You are a helpful AI assistant for ReadyCleans, a professional cleaning service specializing in Standard residential cleans and Airbnb turnover cleaning in Phoenix, AZ.
-- Standard Cleans: Start at $69 for Studio, up to $249 for 5 Bed / 3 Bath
-- Airbnb Turnovers: Start at $69 for Studio, up to $249 for 5 Bed / 3 Bath
-- Add-ons: Oven ($15), Fridge ($15), Windows ($15), Same-Day ($35)
+- Standard Cleans: Start at $77 for Studio, up to $279 for 5 Bed / 3 Bath
+- Airbnb Turnovers: Start at $77 for Studio, up to $279 for 5 Bed / 3 Bath
+- Add-ons: Oven ($17), Fridge ($17), Windows ($17), Same-Day ($39)
 - We cover all standard points: Kitchen, Bathrooms, Floors, Baseboards.
 - 100% Satisfaction Guarantee.
 - Direct users to book online at readycleans.space/booking or call/text (602) 671-2856.

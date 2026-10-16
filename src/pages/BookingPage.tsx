@@ -918,7 +918,59 @@ const CheckoutStep = () => {
             }
         }
 
-        // 2. Redirect to Stripe
+        // 2. Send Slack Confirmation to #booked channel
+        try {
+            const dateStr = state.date
+                ? new Date(state.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+                : 'Not specified';
+            const unitLabel = state.unitSize
+                .replace(/(\d+)bed(\d+)bath/, '$1 Bed / $2 Bath')
+                .replace('studio', 'Studio / 1 Bath');
+            const serviceLabel = state.serviceType === 'airbnb' ? 'Airbnb Turnover' : 'Standard Cleaning';
+            const addonsLabel = state.addOns.length > 0
+                ? state.addOns.map(a => a.charAt(0).toUpperCase() + a.slice(1).replace('-', ' ')).join(', ')
+                : 'None';
+
+            const bookingConfirmationText = [
+                `🎉 *NEW BOOKING CONFIRMED — DEPOSIT COMPLETED* 🎉`,
+                `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+                `👤 *Customer:* ${state.contact.firstName} ${state.contact.lastName}`,
+                `📞 *Phone:* ${state.contact.phone}`,
+                `✉️ *Email:* ${state.contact.email}`,
+                ``,
+                `📍 *Address:* ${state.address}, ${state.city} ${state.zip}`,
+                `🗓️ *Date:* ${dateStr}`,
+                `⏰ *Time:* ${state.time}`,
+                ``,
+                `🧹 *Service:* ${serviceLabel}`,
+                `🏠 *Unit Size:* ${unitLabel}`,
+                `✨ *Add-ons:* ${addonsLabel}`,
+                ``,
+                `💰 *Total Value:* $${total}.00`,
+                `💳 *Deposit Paid / Due:* $${DEPOSIT_AMOUNT}.00`,
+                `💵 *Remaining Due at Clean:* $${remaining}.00`,
+                `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
+                `✅ *Status:* Confirmed (Deposit Step Completed)`
+            ].join('\n');
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+            await fetch('/api/notify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                signal: controller.signal,
+                body: JSON.stringify({
+                    text: bookingConfirmationText,
+                    channel: '#booked'
+                })
+            });
+            clearTimeout(timeoutId);
+        } catch (error) {
+            console.error("Slack booking confirmation notification failed", error);
+        }
+
+        // 3. Redirect to Stripe
         const bookingRef = `${state.serviceType}_${state.unitSize}_${state.addOns.length}Addons`;
         const params = new URLSearchParams({
             prefilled_email: state.contact.email,
@@ -1029,6 +1081,36 @@ import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 export const BookingPage = () => {
     const { currentStep, prevStep } = useBooking();
     const [showExitConfirm, setShowExitConfirm] = useState(false);
+
+    const isSuccessRedirect = typeof window !== 'undefined' && (
+        new URLSearchParams(window.location.search).get('status') === 'success' ||
+        new URLSearchParams(window.location.search).get('session_id') !== null
+    );
+
+    if (isSuccessRedirect) {
+        return (
+            <div className="min-h-screen bg-[#09090b] flex items-center justify-center py-12 px-4">
+                <div className="max-w-md w-full text-center space-y-6">
+                    <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto text-green-500 border border-green-500/30 shadow-[0_0_30px_rgba(34,197,94,0.3)]">
+                        <Check size={44} className="text-green-500" />
+                    </div>
+                    <h1 className="text-3xl font-bold text-white">Booking Confirmed!</h1>
+                    <p className="text-gray-300">
+                        Thank you! Your deposit has been received and your cleaning appointment is officially confirmed.
+                    </p>
+                    <div className="bg-[#18181b] border border-[#333] p-5 rounded-xl text-left space-y-2 text-sm text-gray-300">
+                        <p><strong className="text-white">What happens next?</strong></p>
+                        <p>• Our team will review your booking details and reach out via phone or text with access instructions.</p>
+                        <p>• We will arrive promptly during your scheduled arrival window.</p>
+                        <p>• If you need to make any changes, call or text us at <a href="tel:6026712856" className="text-green-400 font-semibold hover:underline">(602) 671-2856</a>.</p>
+                    </div>
+                    <Button fullWidth variant="accent" onClick={() => window.location.href = '/'}>
+                        Back to Home
+                    </Button>
+                </div>
+            </div>
+        );
+    }
 
 
     const steps = [
