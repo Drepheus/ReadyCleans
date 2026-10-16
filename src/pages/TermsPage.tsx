@@ -43,7 +43,7 @@ export const TermsPage = () => {
                     <section>
                         <h2 className="text-2xl font-semibold text-white mb-4">3. Payments & Deposits</h2>
                         <p>
-                            A non-refundable deposit of $50 is required to secure your booking. This deposit is applied towards the total cost of the service.
+                            A non-refundable deposit of $25 is required to secure your booking. This deposit is applied towards the total cost of the service.
                             The remaining balance is due upon completion of the service.
                         </p>
                     </section>
@@ -52,7 +52,7 @@ export const TermsPage = () => {
                         <h2 className="text-2xl font-semibold text-white mb-4">4. Cancellation Policy</h2>
                         <p>
                             Cancellations made more than 24 hours before the scheduled appointment time are eligible for a deposit refund or rescheduling.
-                            Cancellations made less than 24 hours in advance result in the forfeiture of the $50 deposit.
+                            Cancellations made less than 24 hours in advance result in the forfeiture of the $25 deposit.
                         </p>
                     </section>
 

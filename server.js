@@ -7,6 +7,7 @@ import cron from 'node-cron';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getAgentResponse } from './api/agentEngine.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,7 +22,7 @@ app.use(express.json());
 // Initialize Services
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
 
 // --- Blog Automation Engine ---
 
@@ -198,50 +199,33 @@ app.post('/api/admin/generate', async (req, res) => {
 });
 
 // Slack & Chat Logic
-async function sendToSlack(text, channel) {
-    const isBooked = channel === 'booked' || channel === '#booked';
-    const targetChannel = channel ? (channel.startsWith('#') ? channel : `#${channel}`) : undefined;
-
-    const webhookUrl = isBooked
-        ? (process.env.SLACK_BOOKED_WEBHOOK_URL || process.env.SLACK_WEBHOOK_URL_BOOKED || process.env.SLACK_WEBHOOK_URL)
-        : process.env.SLACK_WEBHOOK_URL;
-
+async function sendToSlack(text) {
+    const webhookUrl = process.env.SLACK_WEBHOOK_URL;
     if (!webhookUrl) return;
 
     try {
-        const payload = {
-            text,
-            ...(targetChannel ? { channel: targetChannel } : {})
-        };
         await fetch(webhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({ text })
         });
-    } catch (e) { console.error("Slack Error", e); }
+    } catch (e) {
+        console.error("Slack Error:", e);
+    }
 }
 
 app.post('/api/notify', async (req, res) => {
     try {
-        const { text, channel } = req.body;
+        const { text } = req.body;
         if (!text) return res.status(400).json({ error: 'Text is required' });
 
-        await sendToSlack(text, channel);
+        await sendToSlack(text);
         res.json({ success: true });
     } catch (err) {
         console.error('Notify Error:', err);
         res.status(500).json({ error: 'Failed to notify' });
     }
 });
-
-const SYSTEM_PROMPT = `You are a helpful AI assistant for ReadyCleans, a professional cleaning service specializing in Standard residential cleans and Airbnb turnover cleaning in Phoenix, AZ.
-- Standard Cleans: Start at $77 for Studio, up to $279 for 5 Bed / 3 Bath
-- Airbnb Turnovers: Start at $77 for Studio, up to $279 for 5 Bed / 3 Bath
-- Add-ons: Oven ($17), Fridge ($17), Windows ($17), Same-Day ($39)
-- We cover all standard points: Kitchen, Bathrooms, Floors, Baseboards.
-- 100% Satisfaction Guarantee.
-- Direct users to book online at readycleans.space/booking or call/text (602) 671-2856.
-- Be friendly, professional, and concise.`;
 
 app.post('/api/chat', async (req, res) => {
     try {
@@ -251,51 +235,36 @@ app.post('/api/chat', async (req, res) => {
         }
 
         const trimmed = message.trim();
-        const timeString = new Date().toLocaleTimeString('en-US', { timeZone: 'America/Phoenix', hour: 'numeric', minute: '2-digit', hour12: true });
+        const timeString = new Date().toLocaleTimeString('en-US', {
+            timeZone: 'America/Phoenix',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
 
-        // Immediately notify Slack
-        await sendToSlack(`💬 *Live Customer Chat Message*\n*Customer:* "${trimmed}"\n*Time:* ${timeString} MST`);
+        // Immediately notify Slack (Social channel)
+        const lower = trimmed.toLowerCase();
+        const isUrgent = lower.includes('urgent') || lower.includes('emergency') || lower.includes('human') || lower.includes('call me');
+        const alertPrefix = isUrgent ? '🚨 *URGENT CHAT — ATTENTION REQUIRED*\n' : '';
 
-        let responseText = '';
+        await sendToSlack(`${alertPrefix}💬 *Live Customer Chat Message*\n*Customer:* "${trimmed}"\n*Time:* ${timeString} MST`, '#social');
 
-        if (model) {
-            try {
-                const cleanHistory = [];
-                for (const msg of history) {
-                    if (!msg || !msg.text) continue;
-                    const role = msg.sender === 'user' ? 'user' : 'model';
-                    if (cleanHistory.length === 0 || cleanHistory[cleanHistory.length - 1].role !== role) {
-                        cleanHistory.push({ role, parts: [{ text: msg.text }] });
-                    }
-                }
-                if (cleanHistory.length > 0 && cleanHistory[cleanHistory.length - 1].role === 'user') {
-                    cleanHistory.pop();
-                }
+        // Multi-tier 24/7 AI agent response
+        const { response: responseText } = await getAgentResponse({
+            message: trimmed,
+            history
+        });
 
-                const chat = model.startChat({
-                    history: cleanHistory,
-                    generationConfig: { maxOutputTokens: 500 },
-                });
-
-                const result = await chat.sendMessage(trimmed);
-                responseText = result.response.text();
-            } catch (err) {
-                console.error('Gemini Error:', err);
-            }
-        }
-
-        if (!responseText) {
-            responseText = "Thanks for messaging us! Our team has received your inquiry directly in our Slack queue and will assist you shortly. If you'd like to book an appointment right now, you can reserve your spot online at [readycleans.space/booking](/booking) or call/text us directly at (602) 671-2856.";
-        } else {
-            await sendToSlack(`🤖 *AI Response:* ${responseText.substring(0, 300)}`);
-        }
+        // Log AI response to Slack
+        const preview = responseText.length > 350 ? responseText.substring(0, 350) + '...' : responseText;
+        await sendToSlack(`🤖 *AI Agent Response (24/7 Assistant):*\n${preview}`, '#social');
 
         res.json({ response: responseText });
 
     } catch (error) {
         console.error('Chat endpoint error:', error);
         res.json({
-            response: "Thanks for reaching out! We've received your message and sent it directly to our team. For instant pricing and scheduling, you can book online at [readycleans.space/booking](/booking) or call/text us at (602) 671-2856."
+            response: "Thanks for reaching out to ReadyCleans! Our standard and Airbnb cleans start at $77 for studios up to $279 for 5 Bed / 3 Bath. You can check live availability and book anytime at [readycleans.space/booking](/booking) or call/text us at (602) 671-2856."
         });
     }
 });

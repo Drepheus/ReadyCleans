@@ -16,6 +16,23 @@ const QUICK_ACTIONS = [
     { label: "✨ What's Included?", prompt: "What standard inspection points do you clean?" },
 ];
 
+const getClientFallbackResponse = (query: string): string => {
+    const q = (query || '').toLowerCase();
+    if (q.includes('2 bed') && q.includes('2 bath')) {
+        return "Our flat rate for a **2 Bed / 2 Bath** is **$144** for both Standard Cleans and Airbnb Turnovers in Phoenix! Optional add-ons: Oven ($17), Fridge ($17), Windows ($17), Same-Day ($39). You can book online at [readycleans.space/booking](/booking) or call/text (602) 671-2856.";
+    }
+    if (q.includes('price') || q.includes('rate') || q.includes('cost') || q.includes('quote') || q.includes('how much')) {
+        return "Our pricing starts at **$77 for Studios**, **$100 for 1 Bed / 1 Bath**, up to **$279 for 5 Bed / 3 Bath** with transparent flat rates! View all rates and reserve online at [readycleans.space/booking](/booking) or call/text (602) 671-2856.";
+    }
+    if (q.includes('airbnb') || q.includes('turnover') || q.includes('vrbo') || q.includes('str')) {
+        return "Our specialized **Airbnb Turnover Cleanings** start at **$77** and include full sanitization, fresh linen changes, bed styling, towel staging, guest amenity restocking, and damage inspections. Book 24/7 at [readycleans.space/booking](/booking) or text (602) 671-2856!";
+    }
+    if (q.includes('area') || q.includes('where') || q.includes('phoenix') || q.includes('scottsdale')) {
+        return "We serve the entire **Phoenix Metro Area** including Phoenix, Scottsdale, Tempe, Mesa, Chandler, Gilbert, Glendale, Peoria, and Paradise Valley. Book online anytime at [readycleans.space/booking](/booking)!";
+    }
+    return "Thanks for your question! We're here 24/7 to help you with cleaning services in Phoenix. Our standard and Airbnb cleans start at $77 up to $279. You can check live availability and reserve online at [readycleans.space/booking](/booking) or call/text us directly at **(602) 671-2856**.";
+};
+
 export const AIAssistant = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [input, setInput] = useState('');
@@ -126,23 +143,24 @@ export const AIAssistant = () => {
             }]);
         } catch (error) {
             console.error('Chat error:', error);
-            // Backup notification to Slack via /api/notify if /api/chat network call completely failed
+            // Backup notification to Slack via /api/notify if /api/chat network call failed
             try {
                 await fetch('/api/notify', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        text: `💬 *Customer Chat Backup Notification*\n*Customer:* "${text}"\n*Status:* Received via web chat`
+                        text: `💬 *Customer Chat Message (Client Backup)*\n*Customer:* "${text}"\n*Time:* ${new Date().toLocaleTimeString('en-US', { timeZone: 'America/Phoenix' })} MST`
                     })
                 });
             } catch (err) {
                 console.error('Backup notify error:', err);
             }
 
-            // Warm and helpful fallback response so customer is never stranded
+            // Intelligent local fallback response so customer is never stranded
+            const fallbackReply = getClientFallbackResponse(text);
             setMessages(prev => [...prev, {
                 id: 'ai-' + Date.now(),
-                text: "Thanks for your question! Your message was sent straight to our team on Slack. For instant quotes or to reserve your spot right now, you can book online at [readycleans.space/booking](/booking) or call/text us directly at **(602) 671-2856**.",
+                text: fallbackReply,
                 sender: 'ai',
                 timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             }]);

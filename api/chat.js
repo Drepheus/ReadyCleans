@@ -1,15 +1,26 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-const SYSTEM_PROMPT = `You are a helpful AI assistant for ReadyCleans, a professional cleaning service specializing in Standard residential cleans and Airbnb turnover cleaning in Phoenix, AZ.
-- Standard Cleans: Start at $77 for Studio, up to $279 for 5 Bed / 3 Bath
-- Airbnb Turnovers: Start at $77 for Studio, up to $279 for 5 Bed / 3 Bath
-- Add-ons: Oven ($17), Fridge ($17), Windows ($17), Same-Day ($39)
-- We cover all standard points: Kitchen, Bathrooms, Floors, Baseboards.
-- 100% Satisfaction Guarantee.
-- Direct users to book online at readycleans.space/booking or call/text (602) 671-2856.
-- Be friendly, professional, and concise.`;
+import { getAgentResponse } from './agentEngine.js';
 
 async function sendToSlack(text) {
+    // If Slack Bot Token is configured, can use Slack Web API
+    if (process.env.SLACK_BOT_TOKEN) {
+        try {
+            await fetch('https://slack.com/api/chat.postMessage', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${process.env.SLACK_BOT_TOKEN}`
+                },
+                body: JSON.stringify({
+                    channel: '#social',
+                    text
+                })
+            });
+            return;
+        } catch (e) {
+            console.error("Slack Bot Error:", e);
+        }
+    }
+
     const webhookUrl = process.env.SLACK_WEBHOOK_URL;
     if (!webhookUrl) return;
 
@@ -46,78 +57,36 @@ export default async function handler(req, res) {
         }
 
         const trimmedMessage = message.trim();
-        const timeString = new Date().toLocaleTimeString('en-US', { timeZone: 'America/Phoenix', hour: 'numeric', minute: '2-digit', hour12: true });
+        const timeString = new Date().toLocaleTimeString('en-US', {
+            timeZone: 'America/Phoenix',
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
 
-        // 1. Immediately send customer chat message to Slack so no lead is missed
-        await sendToSlack(`💬 *Live Customer Chat Message*\n*Customer:* "${trimmedMessage}"\n*Time:* ${timeString} MST`);
+        // 1. Send live customer chat message to Slack immediately
+        const lowerMsg = trimmedMessage.toLowerCase();
+        const isUrgent = lowerMsg.includes('urgent') || lowerMsg.includes('emergency') || lowerMsg.includes('human') || lowerMsg.includes('call me');
+        const alertPrefix = isUrgent ? '🚨 *URGENT CHAT — ATTENTION REQUIRED*\n' : '';
 
-        let responseText = '';
+        await sendToSlack(`${alertPrefix}💬 *Live Customer Chat Message*\n*Customer:* "${trimmedMessage}"\n*Time:* ${timeString} MST`);
 
-        // 2. Try generating response with Gemini if API key is configured
-        if (process.env.GEMINI_API_KEY) {
-            try {
-                const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-                const model = genAI.getGenerativeModel({
-                    model: "gemini-2.0-flash",
-                    systemInstruction: SYSTEM_PROMPT
-                });
+        // 2. Multi-tier AI Agent handles response 24/7/365
+        const { response: responseText } = await getAgentResponse({
+            message: trimmedMessage,
+            history
+        });
 
-                // Prepare clean alternating history for Gemini multiturn chat
-                const cleanHistory = [];
-                for (const msg of history) {
-                    if (!msg || !msg.text) continue;
-                    const role = msg.sender === 'user' ? 'user' : 'model';
-                    // Gemini requires strict alternating turns
-                    if (cleanHistory.length === 0 || cleanHistory[cleanHistory.length - 1].role !== role) {
-                        cleanHistory.push({
-                            role,
-                            parts: [{ text: msg.text }]
-                        });
-                    }
-                }
-                // If history ends with user, remove it so current user message doesn't double
-                if (cleanHistory.length > 0 && cleanHistory[cleanHistory.length - 1].role === 'user') {
-                    cleanHistory.pop();
-                }
-
-                const chat = model.startChat({
-                    history: cleanHistory,
-                    generationConfig: { maxOutputTokens: 500 },
-                });
-
-                const result = await chat.sendMessage(trimmedMessage);
-                responseText = result.response.text();
-            } catch (geminiError) {
-                console.error('Gemini API Error:', geminiError);
-                // Try fallback to gemini-1.5-flash if 2.0-flash errored
-                try {
-                    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-                    const fallbackModel = genAI.getGenerativeModel({
-                        model: "gemini-1.5-flash",
-                        systemInstruction: SYSTEM_PROMPT
-                    });
-                    const fallbackResult = await fallbackModel.generateContent(trimmedMessage);
-                    responseText = fallbackResult.response.text();
-                } catch (fallbackError) {
-                    console.error('Gemini Fallback Error:', fallbackError);
-                }
-            }
-        }
-
-        // 3. If Gemini didn't return text (e.g. no key, rate limit, network issue), provide friendly fallback response
-        if (!responseText) {
-            responseText = "Thanks for messaging us! Our team has received your inquiry directly in our Slack queue and will assist you shortly. If you'd like to book an appointment right now, you can reserve your spot online at [readycleans.space/booking](/booking) or call/text us directly at (602) 671-2856.";
-        } else {
-            // Also notify Slack with the AI response so the team can see what was answered
-            await sendToSlack(`🤖 *AI Response:* ${responseText.substring(0, 300)}${responseText.length > 300 ? '...' : ''}`);
-        }
+        // 3. Send AI Agent response to Slack so the owner can see the full thread
+        const preview = responseText.length > 350 ? responseText.substring(0, 350) + '...' : responseText;
+        await sendToSlack(`🤖 *AI Agent Response (24/7 Assistant):*\n${preview}`);
 
         return res.status(200).json({ response: responseText });
 
     } catch (error) {
         console.error('Chat API Error:', error);
-        // Even in catch block, return 200 with fallback so customer is never stranded
-        const fallbackText = "Thanks for contacting ReadyCleans! Your message was sent to our support team. You can also view pricing and book anytime at [readycleans.space/booking](/booking) or reach us directly at (602) 671-2856.";
-        return res.status(200).json({ response: fallbackText });
+        // Even in unexpected errors, provide helpful, authoritative response
+        const fallback = "Thanks for contacting ReadyCleans! Our standard and Airbnb cleanings in Phoenix start at $77 for studios up to $279 for 5 Bed / 3 Bath. You can check live availability and book anytime at [readycleans.space/booking](/booking) or reach our team directly at (602) 671-2856.";
+        return res.status(200).json({ response: fallback });
     }
 }

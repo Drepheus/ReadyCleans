@@ -53,7 +53,7 @@ async function runTest() {
         : 'None';
     
     const total = Number(booking.Total) || 89;
-    const deposit = 50;
+    const deposit = 25;
     const remaining = total - deposit;
 
     // Phone format: (XXX) XXX-XXXX if 10 digits
@@ -88,23 +88,19 @@ async function runTest() {
     console.log(slackMessage);
     console.log('-----------------------------\n');
 
-    const targetChannel = '#booked';
-    const webhookUrl = process.env.SLACK_BOOKED_WEBHOOK_URL || process.env.SLACK_WEBHOOK_URL_BOOKED || process.env.SLACK_WEBHOOK_URL;
-
+    const webhookUrl = process.env.SLACK_WEBHOOK_URL;
     if (!webhookUrl) {
-        console.error('ERROR: No SLACK_WEBHOOK_URL or SLACK_BOOKED_WEBHOOK_URL found in environment variables.');
+        console.error('ERROR: No SLACK_WEBHOOK_URL found in environment variables.');
         process.exit(1);
     }
 
-    console.log(`Sending to Slack (Channel: ${targetChannel})...`);
-    console.log(`Webhook URL in use: ${webhookUrl.slice(0, 35)}...`);
+    console.log(`Sending booking confirmation to Slack (Social channel)...`);
 
     try {
         const response = await fetch(webhookUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                channel: targetChannel,
                 text: slackMessage
             })
         });
@@ -121,3 +117,4 @@ async function runTest() {
 }
 
 runTest();
+

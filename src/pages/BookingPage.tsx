@@ -860,7 +860,7 @@ const CheckoutStep = () => {
     const basePrice = PRICING[state.serviceType]?.[state.unitSize] || 0;
     const addOnsPrice = state.addOns.reduce((acc, curr) => acc + (PRICING.addons[curr] || 0), 0);
     const total = basePrice + addOnsPrice;
-    const DEPOSIT_AMOUNT = 50;
+    const DEPOSIT_AMOUNT = 25;
     const remaining = total - DEPOSIT_AMOUNT;
 
     useEffect(() => {
@@ -881,7 +881,7 @@ const CheckoutStep = () => {
     }, []); // Run once when component mounts
 
     // Configuration
-    const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/dRm6oH2XPaJN82N0HSdfG0h';
+    const STRIPE_PAYMENT_LINK = 'https://buy.stripe.com/00w00j6a18BFerbcqAdfG0i';
     // PASTE YOUR GOOGLE SHEETS WEB APP URL HERE
     const GOOGLE_SHEETS_URL = 'https://sheetdb.io/api/v1/nonxdgios85e1';
 
@@ -956,13 +956,20 @@ const CheckoutStep = () => {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 4000);
 
+            // Save booking summary to sessionStorage for post-checkout verification
+            try {
+                sessionStorage.setItem('readycleans_last_booking', JSON.stringify({
+                    text: bookingConfirmationText,
+                    timestamp: Date.now()
+                }));
+            } catch (e) {}
+
             await fetch('/api/notify', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 signal: controller.signal,
                 body: JSON.stringify({
-                    text: bookingConfirmationText,
-                    channel: '#booked'
+                    text: bookingConfirmationText
                 })
             });
             clearTimeout(timeoutId);

@@ -9,14 +9,12 @@ export const ContactPage = () => {
     const [view, setView] = useState<'chat' | 'email'>('chat');
 
     const handleOpenChat = () => {
-        // Try to click the global chat trigger if it exists
-        const chatTrigger = document.querySelector('button[aria-label="Toggle chat"]');
+        // Target the floating chat toggle button
+        const chatTrigger = document.getElementById('chat-toggle-button') ||
+            document.querySelector('button[aria-label*="chat"]') ||
+            document.querySelector('button[aria-label="Toggle chat"]');
         if (chatTrigger instanceof HTMLElement) {
             chatTrigger.click();
-        } else {
-            // Fallback selector based on typical floating button position/class if aria-label is missing
-            const floatingBtn = document.querySelector('.fixed.bottom-6.right-6');
-            if (floatingBtn instanceof HTMLElement) floatingBtn.click();
         }
     };
 
